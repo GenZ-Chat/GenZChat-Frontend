@@ -1,0 +1,19 @@
+import {MessageComponentsProps} from "@/app/home/model/message_model";
+
+export  function ReceiveMsgComponent({ msg, time, sender }: MessageComponentsProps) {
+    return (
+            <div className="space-y-4 mt-4">
+                    {/* Received Message - Left aligned */}
+                    <div className="flex justify-start">
+                        <div className="max-w-[70%]">
+                            <div className="bg-secondary text-secondary-foreground p-3 rounded-2xl rounded-bl-md shadow-md border border-border">
+                                {msg}
+                            </div>
+                            <span className="text-xs text-muted-foreground ml-2 mt-1 block">
+                                {sender ? "You" : "Alex"} • {time}
+                            </span>
+                        </div>
+                    </div>
+                    </div>
+    )
+}
