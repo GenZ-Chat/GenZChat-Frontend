@@ -4,17 +4,27 @@ export class ChatService {
   private socket: Socket;
 
   constructor() {
-    this.socket = io("http://localhost:8020/chat");
+    this.socket = io("http://localhost:9060/chat",{
+      query: {
+        userId: "688ca973240cb78b0cdec73c"
+      }
+    });
   }
-    public connect() {
+    public connect() {    
         this.socket.connect();
     }
 
-  public sendMessage(message: string) {
-    this.socket.emit("events", message);
+  
+
+  public sendMessage(message: string,receiver: string) {
+    this.socket.emit("events", {message:message,receiver:receiver});
   }
 
   public onMessage(callback: (message: string) => void) {
     this.socket.on("events", callback);
+  }
+
+  public isConnected(): boolean {
+    return this.socket.connected;
   }
 }

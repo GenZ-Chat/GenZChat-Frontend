@@ -13,34 +13,9 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from "@/components/ui/sidebar"
+import { FriendModel, FriendStatus } from "@/app/home/model/friend_model"
 
-
-
-// Friends list
-const friends = [
-  {
-    name: "Alice Johnson",
-    status: "online",
-    avatar: "A",
-  },
-  {
-    name: "Bob Smith", 
-    status: "away",
-    avatar: "B",
-  },
-  {
-    name: "Charlie Brown",
-    status: "online", 
-    avatar: "C",
-  },
-  {
-    name: "Diana Lee",
-    status: "offline",
-    avatar: "D",
-  },
-]
-
-export function AppSidebar() {
+export function AppSidebar({friends, selectedFriend, setSelectedFriend}: {friends: FriendModel[], selectedFriend: FriendModel | null, setSelectedFriend: (friend: FriendModel | null) => void}) {
   return (
     <Sidebar>
       {/* Header with Logo and App Name */}
@@ -70,15 +45,22 @@ export function AppSidebar() {
             <SidebarMenu>
               {friends.map((friend) => (
                 <SidebarMenuItem key={friend.name}>
-                  <SidebarMenuButton className="h-12 justify-start gap-3">
+                  <SidebarMenuButton 
+                    className={`h-12 justify-start gap-3 transition-colors duration-200 ${
+                      selectedFriend?.name === friend.name 
+                        ? 'bg-primary/20 text-primary border-l-4 border-primary hover:bg-primary/30' 
+                        : 'hover:bg-accent hover:text-accent-foreground'
+                    }`}
+                    onClick={() => setSelectedFriend(friend)}
+                  >
                     <div className="relative">
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
-                        {friend.avatar}
+                        {friend.name.charAt(0).toUpperCase()}
                       </div>
                       <div className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background ${
-                        friend.status === 'online' 
+                        friend.status === FriendStatus.Online
                           ? 'bg-green-500' 
-                          : friend.status === 'away' 
+                          : friend.status === FriendStatus.Offline 
                           ? 'bg-yellow-500' 
                           : 'bg-gray-400'
                       }`} />
@@ -88,10 +70,22 @@ export function AppSidebar() {
                       <div className="text-xs text-muted-foreground capitalize">{friend.status}</div>
                     </div>
                     <div className="flex gap-1">
-                      <button className="h-7 w-7 rounded-md hover:bg-accent hover:text-accent-foreground flex items-center justify-center">
+                      <button 
+                        className="h-7 w-7 rounded-md hover:bg-accent hover:text-accent-foreground flex items-center justify-center"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Handle phone call
+                        }}
+                      >
                         <Phone className="h-3 w-3" />
                       </button>
-                      <button className="h-7 w-7 rounded-md hover:bg-accent hover:text-accent-foreground flex items-center justify-center">
+                      <button 
+                        className="h-7 w-7 rounded-md hover:bg-accent hover:text-accent-foreground flex items-center justify-center"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Handle video call
+                        }}
+                      >
                         <Video className="h-3 w-3" />
                       </button>
                     </div>
