@@ -11,33 +11,59 @@ import { useEffect, useState } from "react";
 import {UserService} from "@/app/home/service/user_service";
 import {ChatService} from "@/app/home/service/chat_service";
 import { FriendModel } from "@/app/home/model/friend_model";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { auth } from "@/auth";
 
 
-export default function HomePage({children}: {children: React.ReactNode}) {
-
+export default  function HomePage({children}: {children: React.ReactNode}) {
+    const { data: session, status } = useSession();
+    const router = useRouter();
+    console.log(session?.user?.id); // Log the user ID for debugging
     const [messages,setMessages] = useState<MessageComponentsProps[]>([])
     const [input_text, setInputText] = useState<string>("");
     const [friends,setFriends] = useState<FriendModel[]>([]);
     const [selectedFriend, setSelectedFriend] = useState<FriendModel | null>(null);
-    const [chatService] = useState(() => new ChatService());
-    const [userService] = useState(() => new UserService());
+    const [chatService] = useState(() => new ChatService(session?.user?.id || ""));
+    const [userService, setUserService] = useState<UserService | null>(null);
+
+    // Redirect to auth if not authenticated
+    useEffect(() => {
+        if (status === "loading") return; // Still loading
+        if (status === "unauthenticated") {
+            router.push("/auth");
+            return;
+        }
+        
+        // Initialize user service with session user ID
+        if (session?.user?.id && !userService) {
+            setUserService(new UserService(session.user.id));
+        }
+    }, [session, status, router, userService]);
 
     useEffect(() => {
+        if (!userService || !session?.user?.id) return;
+        
+      userService.setUserId(session.user?.id)
         // Fetch friends
         userService.getFriends().then(friends => {
             setFriends(friends);
             console.log("Fetched friends:", friends);
+        }).catch(error => {
+            console.error("Error fetching friends:", error);
+            // You might want to show a toast notification here
         });
-
+        
         // Setup Socket.IO connection
-        chatService.connect();
+        chatService.connect(session.user.id);
 
         // Setup message listener
         const handleMessage = (data: any) => {
             console.log("Received message data:", data);
             const newMessage: MessageComponentsProps = {
                 msg: data.message || data,
-                senderId: data.senderId || (selectedFriend ? selectedFriend.id : 'unknown'),
+                name: selectedFriend?.name,
+                senderId: data.googleUserId || (selectedFriend ? selectedFriend.id : 'unknown'),
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 sender: false
             };
@@ -50,7 +76,7 @@ export default function HomePage({children}: {children: React.ReactNode}) {
         return () => {
         
         };
-    }, [chatService, userService]);
+    }, [chatService, userService, session?.user?.id]);
 
     // Clear messages when friend changes
     useEffect(() => {
@@ -62,20 +88,40 @@ export default function HomePage({children}: {children: React.ReactNode}) {
 
     const handleSendMessage = () => {
         if (input_text.trim() !== "" && selectedFriend && chatService.isConnected()) {
+            console.log(selectedFriend.googleUserId)
             const newMessage: MessageComponentsProps = {
-                senderId: selectedFriend.id,
+                name:selectedFriend.name,
+                senderId: selectedFriend.googleUserId,
                 msg: input_text,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 sender: true
             };
             setMessages(prevMessages => [...prevMessages, newMessage]);
-            chatService.sendMessage(input_text, selectedFriend.id);
+            chatService.sendMessage(input_text, selectedFriend.googleUserId || selectedFriend.id);
             setInputText("");
         } else if (!chatService.isConnected()) {
             console.error("Cannot send message: Socket is not connected");
             // You might want to show a toast notification here
         }
     };
+
+    // Show loading state while checking authentication
+    if (status === "loading") {
+        return (
+            <div className="flex items-center justify-center h-screen">
+                <div className="text-center">
+                    <div className="text-6xl mb-4">⏳</div>
+                    <h3 className="text-xl font-semibold mb-2">Loading...</h3>
+                    <p className="text-muted-foreground">Please wait while we load your session</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Don't render anything if not authenticated (will redirect)
+    if (!session) {
+        return null;
+    }
 
 
 
@@ -112,7 +158,7 @@ export default function HomePage({children}: {children: React.ReactNode}) {
                         {messages.map((message, index) => 
                             message.sender ? 
                                 <SentMessageComponent key={index} {...message} /> : 
-                                <ReceiveMsgComponent key={index} {...message} />
+                                <ReceiveMsgComponent  key={index} {...message} />
                         )}
                     </div>
                 ) : (

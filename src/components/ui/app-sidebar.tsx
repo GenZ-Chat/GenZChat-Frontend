@@ -1,3 +1,5 @@
+"use client"
+
 import { Calendar, Home, Inbox, Search, Settings, MessageCircle, User, Phone, Video, Users } from "lucide-react"
 import { Input } from "@/components/ui/input"
 

@@ -1,4 +1,4 @@
-import { auth, signIn, signOut} from "@/auth"
+import {  signIn} from "@/auth"
 import { Button } from "@/components/ui/button"
  import {
   Card,
@@ -12,8 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 export default async function SignIn() {
-  const session = await auth()
-  console.log("Session:", session)
+ 
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
@@ -70,7 +69,7 @@ export default async function SignIn() {
           <form
             action={async () => {
               "use server"
-              await signIn("google", {
+              await signIn("auth0", {
                 callbackUrl: "/home",
               })
             }}

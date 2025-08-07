@@ -3,14 +3,25 @@ import { Socket,io } from "socket.io-client";
 export class ChatService {
   private socket: Socket;
 
-  constructor() {
-    this.socket = io("http://localhost:9060/chat",{
+  private userId: string;
+
+  constructor(userId: string) {
+    this.userId = userId;
+    this.socket = io("http://localhost:9060/chat", {
       query: {
-        userId: "688ca973240cb78b0cdec73c"
+        userId: this.userId
       }
     });
   }
-    public connect() {    
+
+
+
+    public connect(userId:string) {    
+       this.socket = io("http://localhost:9060/chat", {
+      query: {
+        userId: userId
+      }
+    });
         this.socket.connect();
     }
 

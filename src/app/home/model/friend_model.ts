@@ -7,4 +7,5 @@ export interface FriendModel {
     id: string;
     name: string;
     status: FriendStatus;
+    googleUserId:string
 }
