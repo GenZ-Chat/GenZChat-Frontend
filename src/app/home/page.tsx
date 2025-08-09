@@ -13,13 +13,15 @@ import {ChatService} from "@/app/home/service/chat_service";
 import { FriendModel } from "@/app/home/model/friend_model";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { auth } from "@/auth";
 
 
 export default  function HomePage({children}: {children: React.ReactNode}) {
+
+
     const { data: session, status } = useSession();
+    console.log(session?.user?.id)
+
     const router = useRouter();
-    console.log(session?.user?.id); // Log the user ID for debugging
     const [messages,setMessages] = useState<MessageComponentsProps[]>([])
     const [input_text, setInputText] = useState<string>("");
     const [friends,setFriends] = useState<FriendModel[]>([]);
