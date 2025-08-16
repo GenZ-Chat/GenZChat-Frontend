@@ -43,13 +43,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
        
           const { id, type } = formatUserId(profile?.sub!);
              account!.userId = id
+          const existingUser = await api.get(`/users/auth0/${id}`);
+          if (existingUser.data) {
+            account!.userId = existingUser.data._id
+          }else{
           const createdUser = await api.post("/users", {
             email: user.email,
             name: user.name,
             auth0Id: id,
             userType: type
           })
+        
           account!.userId = createdUser.data._id
+          }
           return true
         } catch (error) {
           console.error("Error creating user:", error)

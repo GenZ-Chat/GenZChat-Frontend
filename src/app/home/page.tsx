@@ -12,7 +12,7 @@ import {UserService} from "@/app/home/service/user_service";
 import {ChatService} from "@/app/home/service/chat_service";
 import { FriendModel } from "@/app/home/model/friend_model";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 
 export default  function HomePage({children}: {children: React.ReactNode}) {
@@ -20,8 +20,8 @@ export default  function HomePage({children}: {children: React.ReactNode}) {
 
     const { data: session, status } = useSession();
     console.log(session?.user?.id)
-
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [messages,setMessages] = useState<MessageComponentsProps[]>([])
     const [input_text, setInputText] = useState<string>("");
     const [friends,setFriends] = useState<FriendModel[]>([]);
@@ -42,6 +42,24 @@ export default  function HomePage({children}: {children: React.ReactNode}) {
             setUserService(new UserService(session.user.id));
         }
     }, [session, status, router, userService]);
+
+
+    //selecting friends to chat 
+    useEffect(() => {
+        const friendId = searchParams.get('friendId');
+        if (friendId) {
+            const friend = friends.find(f => f.id === friendId);
+            setSelectedFriend(friend || null);
+        }
+    }, [searchParams, friends]);
+
+function handleSelectFriend(friend: FriendModel | null)  {
+    setSelectedFriend(friend);
+    if (friend) {
+        router.push(`/home?friendId=${friend.id}`);
+    }
+};
+
 
     useEffect(() => {
         if (!userService || !session?.user?.id) return;
@@ -93,7 +111,7 @@ export default  function HomePage({children}: {children: React.ReactNode}) {
             console.log(selectedFriend.googleUserId)
             const newMessage: MessageComponentsProps = {
                 name:selectedFriend.name,
-                senderId: selectedFriend.googleUserId,
+                senderId: selectedFriend.id,
                 msg: input_text,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 sender: true
@@ -132,7 +150,7 @@ export default  function HomePage({children}: {children: React.ReactNode}) {
         <AppSidebar 
             friends={friends} 
             selectedFriend={selectedFriend} 
-            setSelectedFriend={setSelectedFriend} 
+            setSelectedFriend={handleSelectFriend} 
         />        
         <main className="flex flex-col min-h-screen w-full">
             {/* Chat Header */}
