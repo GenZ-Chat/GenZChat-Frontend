@@ -1,3 +1,4 @@
+import { ChatModel } from "../model/chat_model";
 import { FriendModel } from "../model/friend_model";
 import {auth} from "@/auth";
 
@@ -6,27 +7,27 @@ export class UserService {
 
     constructor(userId?: string) {
         if (userId) {
-            this.baseUrl = `http://localhost:9060/api/users/${userId}`;
+            this.baseUrl = `http://localhost:9060/api/chat?userId=${userId}`;
         } else {
             this.baseUrl = '';
         }
     }
 
     public async setUserId(userId: string) {
-        this.baseUrl = `http://localhost:9060/api/users/${userId}`;
+        this.baseUrl = `http://localhost:9060/api/chat?userId=${userId}`;
     }
 
-    public async getFriends(): Promise<FriendModel[]> {
+    public async getChats(): Promise<ChatModel[]> {
         if (!this.baseUrl) {
-            throw new Error('User ID not set. Cannot fetch friends.');
+            throw new Error('User ID not set. Cannot fetch chats.');
         }
         
-        const response: Response = await fetch(`${this.baseUrl}/friends`);
+        const response: Response = await fetch(`${this.baseUrl}`);
         if (!response.ok) {
             throw new Error('Failed to fetch friends');
         }
 
-        const friends: FriendModel[] = await response.json();
+        const friends: ChatModel[] = await response.json();
         return friends;
     }
 }

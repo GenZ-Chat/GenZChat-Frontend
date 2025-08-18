@@ -3,16 +3,16 @@
 import { AppSidebar } from "@/components/ui/app-sidebar";
 import { Input } from "@/components/ui/input";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
-import { Camera, Send } from "lucide-react"
+import { Camera, ChartColumn, Send } from "lucide-react"
 import {MessageComponentsProps} from "@/app/home/model/message_model";
 import {ReceiveMsgComponent} from "@/app/home/components/recvieve_msg_component"
 import { SentMessageComponent } from "@/app/home/components/sent_msg_component";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {UserService} from "@/app/home/service/user_service";
 import {ChatService} from "@/app/home/service/chat_service";
-import { FriendModel } from "@/app/home/model/friend_model";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ChatModel } from "./model/chat_model";
 
 
 export default  function HomePage({children}: {children: React.ReactNode}) {
@@ -24,10 +24,12 @@ export default  function HomePage({children}: {children: React.ReactNode}) {
     const searchParams = useSearchParams();
     const [messages,setMessages] = useState<MessageComponentsProps[]>([])
     const [input_text, setInputText] = useState<string>("");
-    const [friends,setFriends] = useState<FriendModel[]>([]);
-    const [selectedFriend, setSelectedFriend] = useState<FriendModel | null>(null);
+    const [chats,setChats] = useState<ChatModel[]>([]);
+    const [selectedChat, setSelectedChat] = useState<ChatModel | null>(null);
     const [chatService] = useState(() => new ChatService(session?.user?.id || ""));
     const [userService, setUserService] = useState<UserService | null>(null);
+
+  
 
     // Redirect to auth if not authenticated
     useEffect(() => {
@@ -46,17 +48,17 @@ export default  function HomePage({children}: {children: React.ReactNode}) {
 
     //selecting friends to chat 
     useEffect(() => {
-        const friendId = searchParams.get('friendId');
-        if (friendId) {
-            const friend = friends.find(f => f.id === friendId);
-            setSelectedFriend(friend || null);
-        }
-    }, [searchParams, friends]);
+        const chatId = searchParams.get('chatId');
+        if (chatId) {
+            const chat = chats.find(f => f.id === chatId);
+            setSelectedChat(chat || null);
+        }   
+    }, [searchParams, chats]);
 
-function handleSelectFriend(friend: FriendModel | null)  {
-    setSelectedFriend(friend);
-    if (friend) {
-        router.push(`/home?friendId=${friend.id}`);
+function handleSelectChat(chat  : ChatModel | null)  {
+    setSelectedChat(chat);
+    if (chat) {
+        router.push(`/home?chatId=${chat.id}`);
     }
 };
 
@@ -65,10 +67,10 @@ function handleSelectFriend(friend: FriendModel | null)  {
         if (!userService || !session?.user?.id) return;
         
       userService.setUserId(session.user?.id)
-        // Fetch friends
-        userService.getFriends().then(friends => {
-            setFriends(friends);
-            console.log("Fetched friends:", friends);
+        // Fetch chats
+        userService.getChats().then(chats => {
+            setChats(chats);
+            console.log("Fetched chats:", chats);
         }).catch(error => {
             console.error("Error fetching friends:", error);
             // You might want to show a toast notification here
@@ -82,8 +84,8 @@ function handleSelectFriend(friend: FriendModel | null)  {
             console.log("Received message data:", data);
             const newMessage: MessageComponentsProps = {
                 msg: data.message || data,
-                name: selectedFriend?.name,
-                senderId: data.googleUserId || (selectedFriend ? selectedFriend.id : 'unknown'),
+                name: Array.isArray(selectedChat?.users) ? selectedChat.users[0].name : selectedChat?.users.name,
+                senderId: data.googleUserId || (selectedChat ? selectedChat.id : 'unknown'),
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 sender: false
             };
@@ -98,26 +100,27 @@ function handleSelectFriend(friend: FriendModel | null)  {
         };
     }, [chatService, userService, session?.user?.id]);
 
-    // Clear messages when friend changes
+    // Clear messages when chat changes
     useEffect(() => {
-        if (selectedFriend) {
-            setMessages([]); // Clear messages when switching friends
-            console.log("Selected friend changed:", selectedFriend);
+        if (selectedChat) {
+            setMessages([]); // Clear messages when switching chats
+            console.log("Selected chat changed:", selectedChat);
         }
-    }, [selectedFriend]);
+    }, [selectedChat]);
 
-    const handleSendMessage = () => {
-        if (input_text.trim() !== "" && selectedFriend && chatService.isConnected()) {
-            console.log(selectedFriend.googleUserId)
+    function handleSendMessage() {
+        if (input_text.trim() !== "" && selectedChat && chatService.isConnected()) {
+        console.log(selectedChat?.users)
+
             const newMessage: MessageComponentsProps = {
-                name:selectedFriend.name,
-                senderId: selectedFriend.id,
+                name:  Array.isArray(selectedChat?.users) ? selectedChat.users[0].name : selectedChat?.users.name,
+                senderId: Array.isArray(selectedChat?.users) ? selectedChat.id : selectedChat?.users.id,
                 msg: input_text,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 sender: true
             };
             setMessages(prevMessages => [...prevMessages, newMessage]);
-            chatService.sendMessage(input_text, selectedFriend.googleUserId || selectedFriend.id);
+            chatService.sendMessage(input_text, Array.isArray(selectedChat?.users) ? selectedChat.users[0].id : selectedChat?.users.id);
             setInputText("");
         } else if (!chatService.isConnected()) {
             console.error("Cannot send message: Socket is not connected");
@@ -148,21 +151,21 @@ function handleSelectFriend(friend: FriendModel | null)  {
   return (
     <SidebarProvider>
         <AppSidebar 
-            friends={friends} 
-            selectedFriend={selectedFriend} 
-            setSelectedFriend={handleSelectFriend} 
+            chats={chats} 
+            selectedChat={selectedChat} 
+            setSelectedChat={handleSelectChat} 
         />        
         <main className="flex flex-col min-h-screen w-full">
             {/* Chat Header */}
-            {selectedFriend && (
+            {selectedChat && (
                 <div className="bg-background border-b border-border p-4">
                     <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
-                            {selectedFriend.name.charAt(0).toUpperCase()}
+                            {Array.isArray(selectedChat?.users) ? selectedChat.users[0].name.charAt(0).toUpperCase() : selectedChat?.users.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                            <h2 className="text-lg font-semibold">{selectedFriend.name}</h2>
-                            <p className="text-sm text-muted-foreground capitalize">{selectedFriend.status}</p>
+                            <h2 className="text-lg font-semibold">{Array.isArray(selectedChat?.users) ? selectedChat.users[0].name : selectedChat?.users.name}</h2>
+                            <p className="text-sm text-muted-foreground capitalize">{}</p>
                         </div>
                     </div>
                 </div>
@@ -173,13 +176,14 @@ function handleSelectFriend(friend: FriendModel | null)  {
                 {children}
                 
                 {/* Messages Container */}
-                {selectedFriend ? (
+                {selectedChat ? (
                     <div className="space-y-4">
-                        {messages.map((message, index) => 
-                            message.sender ? 
-                                <SentMessageComponent key={index} {...message} /> : 
-                                <ReceiveMsgComponent  key={index} {...message} />
-                        )}
+                        {messages.map((message, index) => {
+                            console.log(message)
+                            return message.sender ?
+                                <SentMessageComponent key={index} {...message} /> :
+                                <ReceiveMsgComponent key={index} msg={message.msg} time={message.time} sender={message.sender} name={message.name} senderId={message.senderId} />
+                        })}
                     </div>
                 ) : (
                     <div className="flex flex-col items-center justify-center h-full text-center">
@@ -189,8 +193,8 @@ function handleSelectFriend(friend: FriendModel | null)  {
                     </div>
                 )}
             </div>
-            {/* Input Box at Bottom - Only show when friend is selected */}
-            {selectedFriend && (
+            {/* Input Box at Bottom - Only show when chat is selected */}
+            {selectedChat && (
                 <div className="sticky bottom-0 bg-white border-t border-border p-4 z-50">
                     <div className="flex items-center gap-3 max-w-full">
                         <div className="relative flex-1">
@@ -198,7 +202,7 @@ function handleSelectFriend(friend: FriendModel | null)  {
                             <Input
                                 value={input_text}
                                 onChange={(e) => setInputText(e.target.value)}
-                                placeholder={`Message ${selectedFriend.name}...`} 
+                                placeholder={`Message ${Array.isArray(selectedChat?.users) ? selectedChat.users[0].name : selectedChat?.users.name}...`} 
                                 className="pl-12 pr-4 h-12 w-full rounded-xl border-2 focus:border-primary transition-all duration-200"
                                 onKeyUp={(e) => {
                                     if (e.key === 'Enter') {

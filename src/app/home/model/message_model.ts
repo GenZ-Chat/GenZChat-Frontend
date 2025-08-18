@@ -1,7 +1,7 @@
 export type MessageComponentsProps = {
     msg: string;
     name?:string;
-    senderId:string;
+    senderId?:string;
     time: string;
     sender: boolean;
 }
