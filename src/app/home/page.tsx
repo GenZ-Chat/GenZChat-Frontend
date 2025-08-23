@@ -93,6 +93,7 @@ function handleSelectChat(chat  : ChatModel | null)  {
         };
 
         chatService.onMessage(handleMessage);
+        chatService.receiveGroupMessage(handleMessage);
 
         // Cleanup function
         return () => {
@@ -112,6 +113,18 @@ function handleSelectChat(chat  : ChatModel | null)  {
         if (input_text.trim() !== "" && selectedChat && chatService.isConnected()) {
         console.log(selectedChat?.users)
 
+        if(selectedChat.type == "group") {
+                 const newMessage: MessageComponentsProps = {
+                name:  Array.isArray(selectedChat?.users) ? selectedChat.users[0].name : selectedChat?.users.name,
+                senderId: Array.isArray(selectedChat?.users) ? selectedChat.id : selectedChat?.users.id,
+                msg: input_text,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                sender: true
+            };
+        setMessages(prevMessages => [...prevMessages, newMessage]);
+        chatService.sendGroupMessage(input_text, selectedChat.id);
+        }else{
+
             const newMessage: MessageComponentsProps = {
                 name:  Array.isArray(selectedChat?.users) ? selectedChat.users[0].name : selectedChat?.users.name,
                 senderId: Array.isArray(selectedChat?.users) ? selectedChat.id : selectedChat?.users.id,
@@ -121,11 +134,13 @@ function handleSelectChat(chat  : ChatModel | null)  {
             };
             setMessages(prevMessages => [...prevMessages, newMessage]);
             chatService.sendMessage(input_text, Array.isArray(selectedChat?.users) ? selectedChat.users[0].id : selectedChat?.users.id);
-            setInputText("");
+        }
+        setInputText("");
         } else if (!chatService.isConnected()) {
             console.error("Cannot send message: Socket is not connected");
             // You might want to show a toast notification here
         }
+    
     };
 
     // Show loading state while checking authentication

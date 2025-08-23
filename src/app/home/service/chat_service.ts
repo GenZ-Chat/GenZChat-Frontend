@@ -31,6 +31,16 @@ export class ChatService {
     this.socket.emit("events", {message:message,receiver:receiver});
   }
 
+  public sendGroupMessage(message:string, groupId:string) {
+    this.socket.emit("sendGroupMessage", {message:message,groupId:groupId});
+  }
+
+  public receiveGroupMessage(callback: (message: string) => void) 
+  {
+    
+    this.socket.on("receiveGroupMessage", callback);
+  }
+
   public onMessage(callback: (message: string) => void) {
     this.socket.on("events", callback);
   }
