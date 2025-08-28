@@ -1,4 +1,5 @@
 import { Socket,io } from "socket.io-client";
+import { CreateMessageDto } from "../model/create_message_dto";
 
 export class ChatService {
   private socket: Socket;
@@ -27,8 +28,9 @@ export class ChatService {
 
   
 
-  public sendMessage(message: string,receiver: string) {
-    this.socket.emit("events", {message:message,receiver:receiver});
+  public sendMessage(messageDto:CreateMessageDto) {
+
+    this.socket.emit("events", messageDto.convertToJson());
   }
 
   public sendGroupMessage(message:string, groupId:string) {
@@ -41,7 +43,7 @@ export class ChatService {
     this.socket.on("receiveGroupMessage", callback);
   }
 
-  public onMessage(callback: (message: string) => void) {
+  public onMessage(callback: (message: CreateMessageDto) => void) {
     this.socket.on("events", callback);
   }
 

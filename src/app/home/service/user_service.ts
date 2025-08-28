@@ -30,4 +30,6 @@ export class UserService {
         const friends: ChatModel[] = await response.json();
         return friends;
     }
+
+    
 }

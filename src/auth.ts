@@ -23,12 +23,18 @@ function formatUserId(userId:string){
  
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [Google, Auth0({
-    authorization:{
-      params:{
-        prompt: "login"
+      issuer: process.env.AUTH_AUTH0_ISSUER,
+      clientId: process.env.AUTH_AUTH0_ID!,
+      clientSecret: process.env.AUTH_AUTH0_SECRET!,
+      authorization:{
+        params:{
+          prompt: "login"
+        }
       }
-    }
+  
   })],
+  secret: process.env.AUTH_SECRET,
+
   session: {
     strategy: "jwt",
 
@@ -40,43 +46,58 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         try {
           console.log(account?.id_token)
           console.log(account?.access_token)
-       
           const { id, type } = formatUserId(profile?.sub!);
-             account!.userId = id
-          const existingUser = await api.get(`/users/auth0/${id}`);
-          if (existingUser.data) {
-            account!.userId = existingUser.data._id
-          }else{
-          const createdUser = await api.post("/users", {
-            email: user.email,
-            name: user.name,
-            auth0Id: id,
-            userType: type
-          })
-        
-          account!.userId = createdUser.data._id
+          console.log("Formatted ID:", id, "Type:", type);
+          // Check if user already exists
+          let existingUser;
+          try {
+            existingUser = await api.get(`/users/auth0/${id}`);
+            console.log("existingUser:", existingUser.data);
+            if (existingUser.data) {
+              account!.userId = existingUser.data._id;
+              return true;
+            }
+          } catch (err: any) {
+            if (err.response && err.response.status === 404) {
+              // User not found, proceed to create
+              const createdUser = await api.post("/users", {
+                email: user.email,
+                name: user.name,
+                auth0Id: id,
+                userType: type
+              });
+              account!.userId = createdUser.data._id;
+              return true;
+            } else {
+              // Other errors
+              console.error("Error checking user existence:", err);
+              return true;
+            }
           }
-          return true
         } catch (error) {
-          console.error("Error creating user:", error)
+          console.error("Error creating user:", error);
           // Return true to allow sign in even if user creation fails
-          // You might want to handle this differently based on your needs
-          return true
+          return true;
         }
       }
-      return false
+      return false;
     },
     async jwt({ token, user, account, profile }) {
       //customizing jwt tokens and syncing with auth0 tokens
-        console.log("account_user_id:", account?.userId);
+      console.log("account_user_id:", account?.userId);
       if (account) {
-        token.accessToken = account.access_token
+        token.accessToken = account.access_token;
       }
-      if (user) {
-        token.id = account?.userId
-        token.sub = account?.userId
+      // Always persist the user id on the token
+      if (account?.userId) {
+        token.id = account.userId;
+        token.sub = account.userId;
+      } else if (!token.id && user) {
+        // fallback for first sign in if userId is not set
+        token.id = user.id;
+        token.sub = user.id;
       }
-      return token
+      return token;
     },
 
     async session({ session, token }) {

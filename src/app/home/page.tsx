@@ -13,12 +13,14 @@ import {ChatService} from "@/app/home/service/chat_service";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChatModel } from "./model/chat_model";
+import { CreateMessageDto } from "./model/create_message_dto";
+import { MessageService } from "./service/message_service";
 
 
 export default  function HomePage({children}: {children: React.ReactNode}) {
 
 
-    const { data: session, status } = useSession();
+    const { data:session, status } = useSession();
     console.log(session?.user?.id)
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -28,8 +30,18 @@ export default  function HomePage({children}: {children: React.ReactNode}) {
     const [selectedChat, setSelectedChat] = useState<ChatModel | null>(null);
     const [chatService] = useState(() => new ChatService(session?.user?.id || ""));
     const [userService, setUserService] = useState<UserService | null>(null);
-
+    const [messageService] = useState(() => new MessageService(session?.user?.id || ""));
+    const [messageHistory,setMessageHistory] = useState<any>({});
   
+    useEffect(()=>{
+        if(!session?.user?.id) return;
+        messageService.setUserId( session.user?.id)
+        const messages = messageService.getMessages();
+        messages.then((data)=>{
+            setMessageHistory(data);
+            console.log("message history:",data)
+        })
+    },[messageService,session?.user?.id])
 
     // Redirect to auth if not authenticated
     useEffect(() => {
@@ -52,8 +64,21 @@ export default  function HomePage({children}: {children: React.ReactNode}) {
         if (chatId) {
             const chat = chats.find(f => f.id === chatId);
             setSelectedChat(chat || null);
+            var messages = messageHistory[chatId] || [];
+            console.log("Messages for chatId", chatId, ":", messages);
+            setMessages(messages.map((msg: any) => ({
+                content: msg.content,
+                name: msg.senderId === session?.user?.id ? (Array.isArray(chat?.users) ? chat.users[0].name : chat?.users.name) : (Array.isArray(chat?.users) ? chat.users[0].name : chat?.users.name),
+                senderId: msg.senderId,
+                time: new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                sender: msg.sender === session?.user?.id
+            })));
+            console.log("Chat message selected from URL:", messages);
+
+        } else {
+            setSelectedChat(null);
         }   
-    }, [searchParams, chats]);
+    }, [searchParams, chats,messageHistory,session?.user?.id]);
 
 function handleSelectChat(chat  : ChatModel | null)  {
     setSelectedChat(chat);
@@ -83,9 +108,9 @@ function handleSelectChat(chat  : ChatModel | null)  {
         const handleMessage = (data: any) => {
             console.log("Received message data:", data);
             const newMessage: MessageComponentsProps = {
-                msg: data.message || data,
+                content:data.content,
                 name: Array.isArray(selectedChat?.users) ? selectedChat.users[0].name : selectedChat?.users.name,
-                senderId: data.googleUserId || (selectedChat ? selectedChat.id : 'unknown'),
+                senderId: data.sender || (selectedChat ? selectedChat.id : 'unknown'),
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 sender: false
             };
@@ -93,7 +118,7 @@ function handleSelectChat(chat  : ChatModel | null)  {
         };
 
         chatService.onMessage(handleMessage);
-        chatService.receiveGroupMessage(handleMessage);
+        // chatService.receiveGroupMessage(handleMessage);
 
         // Cleanup function
         return () => {
@@ -101,13 +126,7 @@ function handleSelectChat(chat  : ChatModel | null)  {
         };
     }, [chatService, userService, session?.user?.id]);
 
-    // Clear messages when chat changes
-    useEffect(() => {
-        if (selectedChat) {
-            setMessages([]); // Clear messages when switching chats
-            console.log("Selected chat changed:", selectedChat);
-        }
-    }, [selectedChat]);
+
 
     function handleSendMessage() {
         if (input_text.trim() !== "" && selectedChat && chatService.isConnected()) {
@@ -117,7 +136,7 @@ function handleSelectChat(chat  : ChatModel | null)  {
                  const newMessage: MessageComponentsProps = {
                 name:  Array.isArray(selectedChat?.users) ? selectedChat.users[0].name : selectedChat?.users.name,
                 senderId: Array.isArray(selectedChat?.users) ? selectedChat.id : selectedChat?.users.id,
-                msg: input_text,
+                content: input_text,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 sender: true
             };
@@ -128,12 +147,13 @@ function handleSelectChat(chat  : ChatModel | null)  {
             const newMessage: MessageComponentsProps = {
                 name:  Array.isArray(selectedChat?.users) ? selectedChat.users[0].name : selectedChat?.users.name,
                 senderId: Array.isArray(selectedChat?.users) ? selectedChat.id : selectedChat?.users.id,
-                msg: input_text,
+                content: input_text,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 sender: true
             };
             setMessages(prevMessages => [...prevMessages, newMessage]);
-            chatService.sendMessage(input_text, Array.isArray(selectedChat?.users) ? selectedChat.users[0].id : selectedChat?.users.id);
+            var chat:CreateMessageDto = Array.isArray(selectedChat.users) ? new CreateMessageDto(selectedChat.id,session?.user?.id!,selectedChat.users[0].id,input_text)  :new CreateMessageDto(selectedChat.id,session?.user?.id!,selectedChat.users.id ,input_text,[])
+            chatService.sendMessage(chat);
         }
         setInputText("");
         } else if (!chatService.isConnected()) {
@@ -142,6 +162,8 @@ function handleSelectChat(chat  : ChatModel | null)  {
         }
     
     };
+    
+    
 
     // Show loading state while checking authentication
     if (status === "loading") {
@@ -195,9 +217,9 @@ function handleSelectChat(chat  : ChatModel | null)  {
                     <div className="space-y-4">
                         {messages.map((message, index) => {
                             console.log(message)
-                            return message.sender ?
+                            return message.sender  ?
                                 <SentMessageComponent key={index} {...message} /> :
-                                <ReceiveMsgComponent key={index} msg={message.msg} time={message.time} sender={message.sender} name={message.name} senderId={message.senderId} />
+                                <ReceiveMsgComponent key={index} content={message.content} time={message.time} sender={message.sender} name={message.name} senderId={message.senderId} />
                         })}
                     </div>
                 ) : (
