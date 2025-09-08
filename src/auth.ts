@@ -88,14 +88,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (account) {
         token.accessToken = account.access_token;
       }
-      // Always persist the user id on the token
+      // Only use MongoDB ObjectId for token.id
       if (account?.userId) {
         token.id = account.userId;
         token.sub = account.userId;
-      } else if (!token.id && user) {
-        // fallback for first sign in if userId is not set
-        token.id = user.id;
-        token.sub = user.id;
       }
       return token;
     },
