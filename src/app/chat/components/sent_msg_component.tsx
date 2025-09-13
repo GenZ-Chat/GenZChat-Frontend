@@ -1,7 +1,7 @@
-import {MessageComponentsProps} from "@/app/home/model/message_model";
+import { MessageComponentsProps } from "../model/message_model";
 
 
-export function SentMessageComponent({ content, time, sender }: MessageComponentsProps) {
+export function SentMessageComponent({ content, time,isSender }: MessageComponentsProps) {
     return (
                 <div className="flex justify-end">
                         <div className="max-w-[70%]">
@@ -9,7 +9,7 @@ export function SentMessageComponent({ content, time, sender }: MessageComponent
                                 {content}
                             </div>
                             <span className="text-xs text-muted-foreground mr-2 mt-1 block text-right">
-                                {sender ? "You" : "Alex"} • {time}
+                                {isSender ? "You" : "Alex"} • {time}
                             </span>
                         </div>
                     </div>

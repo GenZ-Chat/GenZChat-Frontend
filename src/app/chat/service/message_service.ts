@@ -1,9 +1,7 @@
-export class MessageService{
-    private userId:string;
+ class MessageService{
+    private userId:string|undefined;
 
-    constructor(userId:string){
-        this.userId = userId;
-    }
+   
     private baseUrl:string = "http://localhost:9060/api/chat/messages"
 
     async getMessages(){
@@ -15,3 +13,5 @@ export class MessageService{
         this.userId = userId;
     }
 }
+
+export const  messageService = new MessageService();

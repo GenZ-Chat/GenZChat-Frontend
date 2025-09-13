@@ -1,8 +1,8 @@
 export type MessageComponentsProps = {
     content: string;
     name?:string;
-    senderId?:string;
-    recieverId?:string;
+    sender?:string;
+    reciever?:string;
     time: string;
-    sender: boolean;
+    isSender:boolean;
 }

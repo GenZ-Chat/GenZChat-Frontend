@@ -1,4 +1,4 @@
-import {MessageComponentsProps} from "@/app/home/model/message_model";
+import { MessageComponentsProps } from "../model/message_model"
 
 export  function ReceiveMsgComponent({ content, time, sender,name}: MessageComponentsProps) {
     console.log(name)

@@ -1,6 +1,6 @@
 "use client"
 
-import { Calendar, Home, Inbox, Search, Settings, MessageCircle, User, Phone, Video, Users } from "lucide-react"
+import {  Search, MessageCircle, Phone, Video, Users } from "lucide-react"
 import { Input } from "@/components/ui/input"
 
 import {
@@ -15,10 +15,11 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from "@/components/ui/sidebar"
-import { FriendModel, FriendStatus } from "@/app/home/model/friend_model"
-import { ChatModel } from "@/app/home/model/chat_model"
+import { Skeleton } from "./skeleton"
+import { ChatModel } from "@/app/chat/model/chat_model"
+import { FriendStatus } from "@/app/chat/model/friend_model"
 
-export function AppSidebar({chats, selectedChat, setSelectedChat}: {chats: ChatModel[], selectedChat: ChatModel | null, setSelectedChat: (friend: ChatModel | null) => void}) {
+export function AppSidebar({chats, selectedChat, setSelectedChat,isLoading}: {chats: ChatModel[], selectedChat: ChatModel | null, setSelectedChat: (friend: ChatModel | null) => void,isLoading:boolean}) {
   return (
     <Sidebar>
       {/* Header with Logo and App Name */}
@@ -46,7 +47,13 @@ export function AppSidebar({chats, selectedChat, setSelectedChat}: {chats: ChatM
           <SidebarGroupLabel>Friends</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {chats.map((chat) => (
+              {isLoading ?   
+     Array.from({ length: 5 }).map((_, idx) => (
+        <SidebarMenuItem key={idx}>
+          <ChatSkeleton />
+        </SidebarMenuItem>
+      ))
+    :chats.map((chat) => (
                 <SidebarMenuItem key={chat.id}>
                   <SidebarMenuButton 
                     className={`h-12 justify-start gap-3 transition-colors duration-200 ${
@@ -111,5 +118,17 @@ export function AppSidebar({chats, selectedChat, setSelectedChat}: {chats: ChatM
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
+  )
+}
+
+function ChatSkeleton() {
+  return (
+    <div className="flex items-center space-x-4">
+      <Skeleton className="h-12 w-12 rounded-full" />
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-[250px]" />
+        <Skeleton className="h-4 w-[200px]" />
+      </div>
+    </div>
   )
 }

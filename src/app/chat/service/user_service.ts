@@ -1,20 +1,17 @@
-import { ChatModel } from "../model/chat_model";
-import { FriendModel } from "../model/friend_model";
+
 import {auth} from "@/auth";
+import { ChatModel } from "../model/chat_model";
 
-export class UserService {
-    private baseUrl: string;
+ class UserService {
+    private baseUrl: string | undefined;
 
-    constructor(userId?: string) {
-        if (userId) {
-            this.baseUrl = `http://localhost:9060/api/chat?userId=${userId}`;
-        } else {
-            this.baseUrl = '';
-        }
-    }
-
+  
     public async setUserId(userId: string) {
         this.baseUrl = `http://localhost:9060/api/chat?userId=${userId}`;
+    }
+
+    public async getUserId() {
+        return this.baseUrl;
     }
 
     public async getChats(): Promise<ChatModel[]> {
@@ -33,3 +30,5 @@ export class UserService {
 
     
 }
+
+export const userService = new UserService();
