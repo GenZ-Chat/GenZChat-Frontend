@@ -2,10 +2,12 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { SentMessageComponent } from "./sent_msg_component"
 import { ReceiveMsgComponent } from "./recvieve_msg_component"
 import { MessageComponentsProps } from "../model/message_model";
+import { ChatModel } from "../model/chat_model";
+import { UserModel } from "../model/user_model";
 
-export default function SelectedChat({chatId, messages,userId}: {chatId: string | undefined, messages: {[key: string]: MessageComponentsProps[]}, userId: string | undefined}) {
+export default function SelectedChat({chat, messages,userId}: {chat: ChatModel | undefined, messages: {[key: string]: MessageComponentsProps[]}, userId: string | undefined}) {
     
-
+    const chatId = chat?.id;
     // Early return if chatId is not available
     if (!chatId || !messages[chatId]) {
         return (
@@ -24,6 +26,7 @@ export default function SelectedChat({chatId, messages,userId}: {chatId: string 
     console.log(messages[chatId]);
     const selectedChatMessage = messages[chatId].map((msg) => ({
         ...msg,
+        name: Array.isArray(chat?.users) ? chat.users.find((u:UserModel)=> u.id === msg.sender)?.name || "Unknown User" : chat?.users.name || "Unknown User",
         isSender: msg.sender === userId // Use isSender instead of modifying sender
     }));
     

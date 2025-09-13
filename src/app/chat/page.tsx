@@ -16,7 +16,6 @@ export default function Chat(){
 
     //session details
     const { data:session, status } = useSession(); 
-    console.log("Session data:", session);
     const userId = session?.user?.id;
     
     //fetching user details
@@ -48,7 +47,7 @@ return <SidebarProvider>
         <ChatPreview/>
         : (
             <>
-            <SelectedChat messages={messageHistory} chatId={selectedChat?.id} userId={userId} />
+            <SelectedChat messages={messageHistory} chat={selectedChat} userId={userId}  />
             <ChatFooter selectedChat={selectedChat} userId={userId}/>
             </>
         )}

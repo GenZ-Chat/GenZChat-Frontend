@@ -70,8 +70,13 @@ class ChatService {
   }
 
   public offMessage() {
-    this.socket?.off("events");
+    this.socket?.off("receiveDirectMessage");
   }
+
+  public offGroupMessage(callback: (message: string) => void) {
+    this.socket?.off("recieveGroupMessage", callback);
+  }
+
 
   public disconnect() {
     this.socket?.disconnect();

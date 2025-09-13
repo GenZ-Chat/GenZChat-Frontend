@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { chatService } from "../service/chat_service";
 import { ChatModel, ChatType } from "../model/chat_model";
 import { CreateMessageDto } from "../model/create_message_dto";
+import { GroupCreateMessageDto } from "../model/group_create_message_dto";
 
 
 export default function ChatFooter({ selectedChat,userId }: {
@@ -25,6 +26,9 @@ export default function ChatFooter({ selectedChat,userId }: {
             const recieverId = selectedChat.users.id;
             const message:CreateMessageDto = new CreateMessageDto(selectedChat.id,userId!,recieverId,input_text)
             chatService.sendMessage(message)
+        }else if(selectedChat.type == ChatType.GROUP){
+            const message:GroupCreateMessageDto = new GroupCreateMessageDto(selectedChat.id,userId!,input_text)
+            chatService.sendGroupMessage(message)
         }
         setInputText("");
     }

@@ -1,6 +1,6 @@
 export class ReceivedMessageModel {
     sender:string;
-    receiver:string;
+    receiver?:string;
     content:string;
     timestamp:string;
     chat:string;
