@@ -56,10 +56,33 @@ export class CallService{
     });
   }
 
-  enableVideo(enabled: boolean) {
-    this.localStream?.getVideoTracks().forEach(track => {
-      track.enabled = enabled;
+  async enableVideo(enabled: boolean) {
+    if (!this.localStream) return;
+
+    // Stop existing video tracks
+    this.localStream.getVideoTracks().forEach(track => {
+      track.stop();
+      this.localStream?.removeTrack(track);
     });
+
+    if (enabled) {
+      try {
+        // Get new video track
+        const newStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const videoTrack = newStream.getVideoTracks()[0];
+        this.localStream.addTrack(videoTrack);
+
+        // Update all peer connections with new track
+        Object.values(this.pcMap).forEach(pc => {
+          const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+          if (sender) {
+            sender.replaceTrack(videoTrack);
+          }
+        });
+      } catch (err) {
+        console.error('Error re-enabling video:', err);
+      }
+    }
   }
 
   private createPeerConnection(peerId:string,isOfferer:boolean = true): RTCPeerConnection {
