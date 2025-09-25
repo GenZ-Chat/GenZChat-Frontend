@@ -6,9 +6,9 @@ export class ReceivedMessageModel {
     chat:string;
     createdAt:string;
     updatedAt:string;
-    attatchments?:any;
+    attachments?:any;
 
-    constructor(sender:string,receiver:string,content:string,timestamp:string,chat:string,createdAt:string,updatedAt:string,attatchments?:any) {
+    constructor(sender:string,receiver:string,content:string,timestamp:string,chat:string,createdAt:string,updatedAt:string,attachments?:any) {
         this.sender = sender;
         this.receiver = receiver;
         this.content = content;
@@ -16,7 +16,7 @@ export class ReceivedMessageModel {
         this.chat = chat;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
-        this.attatchments = attatchments;
+        this.attachments = attachments;
     }
 
     static fromJson(json:any): ReceivedMessageModel {
@@ -28,7 +28,7 @@ export class ReceivedMessageModel {
             json.chat,
             json.createdAt,
             json.updatedAt,
-            json.attatchments
+            json.attachments
         );
     }
 }

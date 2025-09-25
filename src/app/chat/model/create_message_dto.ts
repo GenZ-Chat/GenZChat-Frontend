@@ -1,17 +1,18 @@
+import { FileViewResponse } from "./file/file_response";
 
 export class CreateMessageDto {
     chatId: string;
     senderId: string;
     receiverId: string;
     content: string;
-    attatchments?: [];
+    attachments?: FileViewResponse[];
 
-    constructor(chatId:string,senderId:string,recieverId:string,content:string,attachments?:[]){
+    constructor(chatId:string,senderId:string,recieverId:string,content:string,attachments?:any[]){
         this.chatId = chatId;
         this.senderId = senderId;
         this.receiverId = recieverId;
         this.content = content;
-        this.attatchments = attachments
+        this.attachments = attachments
     }
 
     convertToJson(){
@@ -20,7 +21,7 @@ export class CreateMessageDto {
             senderId:this.senderId,
             receiverId:this.receiverId,
             content:this.content,
-            attatchments:this.attatchments
+            attachments:this.attachments
         }
     }
 }

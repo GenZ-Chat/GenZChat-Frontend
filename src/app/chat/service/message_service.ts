@@ -6,7 +6,9 @@
 
     async getMessages(){
         const messages = await fetch(this.baseUrl+`?userId=${this.userId}`);
-        return messages.json();
+        const data = await messages.json();
+        console.log('[MESSAGE SERVICE] Raw messages data:', data);
+        return data;
     }
 
      setUserId(userId:string){

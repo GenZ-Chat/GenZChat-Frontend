@@ -5,6 +5,45 @@ export const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
 })
 
+
+// Log file API requests
+api.interceptors.request.use(request => {
+  console.log('[FILE API REQUEST]', {
+    url: request.url,
+    method: request.method,
+    headers: {
+      'Content-Type': request.headers['Content-Type'],
+      'Content-Length': request.headers['Content-Length']
+    },
+    timestamp: new Date().toISOString()
+  });
+  return request;
+});
+
+// Log file API responses
+api.interceptors.response.use(
+  response => {
+    console.log('[FILE API RESPONSE]', {
+      url: response.config.url,
+      status: response.status,
+      data: response.data
+    });
+    return response;
+  },
+  error => {
+    if (error.response) {
+      console.error('[FILE API ERROR]', {
+        url: error.config?.url,
+        status: error.response.status,
+        data: error.response.data
+      });
+    } else {
+      console.error('[FILE API ERROR]', error);
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Log all API requests
 api.interceptors.request.use(request => {
   console.log('[API REQUEST]', {

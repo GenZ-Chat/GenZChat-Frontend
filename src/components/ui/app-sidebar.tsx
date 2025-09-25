@@ -19,7 +19,9 @@ import { Skeleton } from "./skeleton"
 import { ChatModel } from "@/app/chat/model/chat_model"
 import { FriendStatus } from "@/app/chat/model/friend_model"
 
-export function AppSidebar({chats, selectedChat, setSelectedChat,isLoading}: {chats: ChatModel[], selectedChat: ChatModel | null, setSelectedChat: (friend: ChatModel | null) => void,isLoading:boolean}) {
+export function AppSidebar({chats, selectedChat, setSelectedChat,isLoading,onPhoneClick}: {chats: ChatModel[], selectedChat: ChatModel | null, setSelectedChat: (friend: ChatModel | null) => void,isLoading:boolean,onPhoneClick:(userId:string) => void}) {
+
+
   return (
     <Sidebar>
       {/* Header with Logo and App Name */}
@@ -80,14 +82,11 @@ export function AppSidebar({chats, selectedChat, setSelectedChat,isLoading}: {ch
                     <div className="flex gap-1">
                       <button 
                         className="h-7 w-7 rounded-md hover:bg-accent hover:text-accent-foreground flex items-center justify-center"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // Handle phone call
-                        }}
+                        onClick={() => onPhoneClick( Array.isArray(chat.users) ? chat.users[0].id : chat.users.id)}
                       >
-                        <Phone className="h-3 w-3" />
+                        <Phone className="h-3 w-3"  />
                       </button>
-                      <button 
+                      <button
                         className="h-7 w-7 rounded-md hover:bg-accent hover:text-accent-foreground flex items-center justify-center"
                         onClick={(e) => {
                           e.stopPropagation();

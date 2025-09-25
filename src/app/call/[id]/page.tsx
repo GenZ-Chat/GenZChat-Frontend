@@ -1,24 +1,46 @@
 "use client"
 
-import React, { useState } from 'react'
-import VideoCard from './components/video_comp'
-import useLocalVideo from './hooks/useLocalVideo';
-import { Participant } from './model/participant';
-import { ControlsBar } from './components/controls-bar';
+import React, { useState, useEffect } from 'react'
+import VideoCard from '../components/video_comp'
+import { ControlsBar } from '../components/controls-bar';
 import { motion } from 'framer-motion';
+import { useParams, useRouter } from 'next/navigation';
+import { useWebRTC } from '../hooks/useWebRTC';
+import { useSession } from 'next-auth/react';
+import { chatService } from '../../chat/service/chat_service';
 
 export default function CallPage(){
+    const router = useRouter();
+    const params = useParams();
+    const { data: session } = useSession();
+    
+
+
     const [isAudioOff, setIsAudioOff] = useState(false);
     const [isVideoOff, setIsVideoOff] = useState(false);
-    const [participants, setParticipants] = useState<Participant[]>([]);
+    const localStream = null; // Placeholder for local stream
+    const remoteStream = null;
 
-    const {videoRef, stream} = useLocalVideo();
-    const remoteVideoRef = React.useRef<HTMLVideoElement|null>(null);
+    // const userId = session?.user?.id; --- IGNORE ---
+    // const peerId = params.id as string; --- IGNORE ---
+    // Use WebRTC hook
+    // const {
+    //     localVideo,
+    //     remoteVideo,
+    //     localStream,
+    //     remoteStream,
+    //     isConnected,
+    //     connectionState,
+    //     isMediaInitialized,
+    //     createOffer,
+    //     handleOffer,
+    //     handleAnswer,
+    //     handleIceCandidate,
+    //     endCall,
+    //     initializeLocalMedia
+    // } = useWebRTC(userId!, peerId);
 
-    const handleEndCall = () => {
-        // Add your end call logic here
-        console.log("Call ended");
-    };
+  
 
     return (
         <motion.div 
@@ -27,6 +49,15 @@ export default function CallPage(){
             transition={{ duration: 0.5 }}
             className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-black p-4"
         >
+            {/* Connection Status */}
+            <div className="absolute top-4 left-4 z-10">
+                <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    true ? 'bg-green-600 text-white' : 'bg-yellow-600 text-white'
+                }`}>
+                    {true ? 'Connected' : `Connecting... (${''})`}
+                </div>
+            </div>
+
             <div className="h-[calc(100vh-2rem)] flex flex-col items-center justify-center">
                 <motion.div 
                     className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 mb-16 px-4 md:px-8 lg:px-16"
@@ -50,10 +81,10 @@ export default function CallPage(){
                     }}
                     className="h-full flex items-center">
                         <VideoCard 
-                            videoRef={videoRef}
+                            videoRef={null}
                             isAudioOff={isAudioOff}
                             isVideoOff={isVideoOff}
-                            stream={stream}
+                            stream={localStream}
                             isLocal={true}
                         />
                     </motion.div>
@@ -63,25 +94,21 @@ export default function CallPage(){
                     }}
                     className="h-full flex items-center">
                         <VideoCard 
-                            videoRef={remoteVideoRef}
-                            isAudioOff={participants[0]?.isAudioOff}
-                            isVideoOff={participants[0]?.isVideoOff}
-                            stream={participants[0]?.stream}
+                            videoRef={null}
+                            isAudioOff={false}
+                            isVideoOff={false}
+                            stream={remoteStream}
                             isLocal={false}
                         />
                     </motion.div>
                 </motion.div>
-
-                <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-10">
-                    <ControlsBar 
-                        isAudioOff={isAudioOff}
-                        isVideoOff={isVideoOff}
-                        onAudioToggle={() => setIsAudioOff(!isAudioOff)}
-                        onVideoToggle={() => setIsVideoOff(!isVideoOff)}
-                        onEndCall={handleEndCall}
-                    />
-                </div>
+                <ControlsBar 
+                    isAudioOff={isAudioOff}
+                    isVideoOff={isVideoOff}
+                    onAudioToggle={() => setIsAudioOff((prev) => !prev)}
+                    onVideoToggle={() => setIsVideoOff((prev) => !prev)}
+                    onEndCall={() => {}}></ControlsBar>
             </div>
         </motion.div>
-    )
+    );
 }

@@ -1,10 +1,14 @@
 import { Input } from "@/components/ui/input";
-import { Camera, Send } from "lucide-react";
+import { Send } from "lucide-react";
 import { useEffect, useState } from "react";
 import { chatService } from "../service/chat_service";
 import { ChatModel, ChatType } from "../model/chat_model";
 import { CreateMessageDto } from "../model/create_message_dto";
 import { GroupCreateMessageDto } from "../model/group_create_message_dto";
+import { useFileUploadWithFiles } from "../hooks/useEnhancedFileUpload";
+import { FileAttachment, AttachmentButton } from "./file_attachment";
+import { FileViewResponse } from "../model/file/file_response";
+import { FileUploadResponse } from "../service/file_service";
 
 
 export default function ChatFooter({ selectedChat,userId }: {
@@ -12,6 +16,22 @@ export default function ChatFooter({ selectedChat,userId }: {
     userId:string | undefined
 }) {
     const [input_text, setInputText] = useState<string>("");
+    const [isUploading, setIsUploading] = useState<boolean>(false);
+    const {
+        selectedFiles,
+        uploadedFiles,
+        fileInputRef,
+        isUploading: fileUploadInProgress,
+        uploadProgress,
+        validationErrors,
+        handleAttachmentClick,
+        handleFileSelect,
+        removeFile,
+        clearFiles,
+        uploadFiles,
+        getFileSize,
+        hasFiles
+    } = useFileUploadWithFiles();
 
     useEffect(()=>{
         if(!chatService.isConnected() && userId){
@@ -19,32 +39,128 @@ export default function ChatFooter({ selectedChat,userId }: {
         }
     },[userId])
 
-    function handleSendMessage() {
-        if (input_text.trim() === "") return;
-        // Logic to send the message goes here
-        if(selectedChat.type == ChatType.DIRECT && !Array.isArray(selectedChat.users)){
-            const recieverId = selectedChat.users.id;
-            const message:CreateMessageDto = new CreateMessageDto(selectedChat.id,userId!,recieverId,input_text)
-            chatService.sendMessage(message)
-        }else if(selectedChat.type == ChatType.GROUP){
-            const message:GroupCreateMessageDto = new GroupCreateMessageDto(selectedChat.id,userId!,input_text)
-            chatService.sendGroupMessage(message)
+    // Convert FileUploadResponse to FileViewResponse
+    function convertToFileViewResponse(uploadResponse: FileUploadResponse, originalFilename: string): FileViewResponse {
+        return new FileViewResponse(
+            uploadResponse.id,
+            uploadResponse.url,
+            uploadResponse.fileId,
+            originalFilename,
+            uploadResponse.size,
+            uploadResponse.type,
+            uploadResponse.createdAt // Using createdAt as uploadedAt
+        );
+    }
+
+    async function handleSendMessage() {
+        if (input_text.trim() === "" && !hasFiles) return;
+        
+        console.log(`[CHAT FOOTER] Starting to send message with ${selectedFiles.length} files`);
+        setIsUploading(true);
+        let attachments: FileViewResponse[] = [];
+        
+        try {
+            // Upload files first if there are any
+            if (hasFiles) {
+                console.log(`[CHAT FOOTER] Uploading ${selectedFiles.length} files...`);
+                console.log('[CHAT FOOTER] Files to upload:', selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })));
+                
+                const uploadResults = await uploadFiles();
+                console.log(`[CHAT FOOTER] Upload completed. Got ${uploadResults.length} results:`, uploadResults);
+                
+                // Validate upload results
+                if (uploadResults.length !== selectedFiles.length) {
+                    throw new Error(`Upload mismatch: expected ${selectedFiles.length} files, got ${uploadResults.length} results`);
+                }
+                
+                // Convert FileUploadResponse[] to FileViewResponse[]
+                attachments = uploadResults.map((uploadResponse, index) => {
+                    const originalFile = selectedFiles[index];
+                    const converted = convertToFileViewResponse(uploadResponse, originalFile?.name || 'unknown');
+                    console.log(`[CHAT FOOTER] Converted file ${index + 1}:`, converted);
+                    return converted;
+                });
+                
+                console.log(`[CHAT FOOTER] Final attachments array:`, attachments);
+            }
+            
+            // Send the message with file attachments via Socket.IO
+            if(selectedChat.type == ChatType.DIRECT && !Array.isArray(selectedChat.users)){
+                const recieverId = selectedChat.users.id;
+                const message = new CreateMessageDto(selectedChat.id, userId!, recieverId, input_text, attachments);
+                console.log('[CHAT FOOTER] Sending direct message:', {
+                    chatId: selectedChat.id,
+                    attachmentCount: attachments.length,
+                    attachments,
+                    content: input_text,
+                    messageObj: message
+                });
+                chatService.sendMessage(message);
+            } else if(selectedChat.type == ChatType.GROUP){
+                const message = new GroupCreateMessageDto(selectedChat.id, userId!, input_text, attachments);
+                console.log('[CHAT FOOTER] Sending group message:', {
+                    chatId: selectedChat.id, 
+                    attachmentCount: attachments.length,
+                    attachments,
+                    content: input_text,
+                    messageObj: message
+                });
+                chatService.sendGroupMessage(message);
+            }
+            
+            // Clear input and files after successful send
+            setInputText("");
+            clearFiles();
+            console.log('[CHAT FOOTER] Message sent successfully, cleared input and files');
+            
+        } catch (error: any) {
+            console.error('[CHAT FOOTER] Failed to send message:', {
+                error: error.message,
+                hasFiles,
+                fileCount: selectedFiles.length,
+                files: selectedFiles.map(f => ({ name: f.name, size: f.size }))
+            });
+            
+            // Don't clear files on error so user can retry
+            alert(`Failed to send message: ${error.message}`);
+        } finally {
+            setIsUploading(false);
         }
-        setInputText("");
     }
 
     return (selectedChat ?
          <div className="sticky bottom-0 bg-white border-t border-border p-4 z-50">
+                    <FileAttachment
+                        selectedFiles={selectedFiles}
+                        onRemoveFile={removeFile}
+                        getFileSize={getFileSize}
+                        isUploading={fileUploadInProgress || isUploading}
+                        uploadProgress={uploadProgress}
+                        validationErrors={validationErrors}
+                        onUpload={async () => {
+                            try {
+                                await uploadFiles();
+                            } catch (error) {
+                                console.error('Upload failed:', error);
+                            }
+                        }}
+                    />
                     <div className="flex items-center gap-3 max-w-full">
                         <div className="relative flex-1">
-                            <Camera className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                            <AttachmentButton
+                                onAttachmentClick={handleAttachmentClick}
+                                fileInputRef={fileInputRef}
+                                onFileSelect={handleFileSelect}
+                                isUploading={fileUploadInProgress || isUploading}
+                            />
                             <Input
                                 value={input_text}
                                 onChange={(e) => setInputText(e.target.value)}
                                 placeholder={`Message here...`} 
                                 className="pl-12 pr-4 h-12 w-full rounded-xl border-2 focus:border-primary transition-all duration-200"
+                                disabled={fileUploadInProgress || isUploading}
                                 onKeyUp={(e) => {
-                                    if (e.key === 'Enter') {
+                                    if (e.key === 'Enter' && !fileUploadInProgress && !isUploading) {
                                         handleSendMessage();
                                     }
                                 }}
@@ -52,8 +168,13 @@ export default function ChatFooter({ selectedChat,userId }: {
                         </div>
                         <button
                         onClick={handleSendMessage}
-                        className="flex items-center justify-center h-12 w-12 bg-blue-500 hover:bg-blue-600 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 active:scale-95">
-                            <Send className="h-5 w-5" />
+                        disabled={fileUploadInProgress || isUploading || (input_text.trim() === "" && !hasFiles)}
+                        className="flex items-center justify-center h-12 w-12 bg-blue-500 hover:bg-blue-600 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+                            {(fileUploadInProgress || isUploading) ? (
+                                <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                            ) : (
+                                <Send className="h-5 w-5" />
+                            )}
                         </button>
                     </div>
                 </div>

@@ -25,7 +25,8 @@ export default function useReceiveMessage(setMessageHistory: React.Dispatch<Reac
                             name:  Array.isArray(chat?.users) ? chat.users.find((u:UserModel)=> u.id === receivedMessage.sender)?.name || "Unknown User" : chat?.users.name || "Unknown User",
                             sender: receivedMessage.sender,
                             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                            isSender: receivedMessage.sender == userId
+                            isSender: receivedMessage.sender == userId,
+                            attachments: receivedMessage.attachments || []
                         };
 
             setMessageHistory((prevHistory) => {
@@ -42,7 +43,8 @@ export default function useReceiveMessage(setMessageHistory: React.Dispatch<Reac
                             name:  Array.isArray(chat?.users) ? chat.users.find((u:UserModel)=> u.id === receivedMessage.sender)?.name || "Unknown User" : chat?.users.name || "Unknown User",
                             sender: receivedMessage.sender,
                             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                            isSender: receivedMessage.sender == userId
+                            isSender: receivedMessage.sender == userId,
+                            attachments: receivedMessage.attachments || []
                         };
 
             setMessageHistory((prevHistory) => {

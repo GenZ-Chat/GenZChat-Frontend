@@ -13,14 +13,14 @@ export default function VideoCard({
   stream,
   isLocal,
 }: {
-  videoRef: React.RefObject<HTMLVideoElement | null>;
+  videoRef: React.RefObject<HTMLVideoElement | null> | null;
   isAudioOff: boolean;
   isVideoOff: boolean;
   stream: MediaStream | null;
   isLocal?: boolean;
 }) {
   useEffect(() => {
-    if (videoRef.current && stream) {
+    if (videoRef?.current && stream) {
       videoRef.current.srcObject = stream;
     }
 

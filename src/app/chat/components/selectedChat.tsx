@@ -23,12 +23,17 @@ export default function SelectedChat({chat, messages,userId}: {chat: ChatModel |
     }
 
     // Safe to access messages[chatId] now
-    console.log(messages[chatId]);
-    const selectedChatMessage = messages[chatId].map((msg) => ({
-        ...msg,
-        name: Array.isArray(chat?.users) ? chat.users.find((u:UserModel)=> u.id === msg.sender)?.name || "Unknown User" : chat?.users.name || "Unknown User",
-        isSender: msg.sender === userId // Use isSender instead of modifying sender
-    }));
+    console.log('[SELECTED CHAT] Raw messages for chat:', chatId, messages[chatId]);
+    const selectedChatMessage = messages[chatId].map((msg) => {
+        const processedMsg = {
+            ...msg,
+            name: Array.isArray(chat?.users) ? chat.users.find((u:UserModel)=> u.id === msg.sender)?.name || "Unknown User" : chat?.users.name || "Unknown User",
+            isSender: msg.sender === userId, // Use isSender instead of modifying sender
+            attachments: msg.attachments || [] // Ensure attachments is always an array
+        };
+        console.log('[SELECTED CHAT] Processed message:', processedMsg);
+        return processedMsg;
+    });
     
     console.log('Messages:', selectedChatMessage);
 
@@ -41,7 +46,7 @@ export default function SelectedChat({chat, messages,userId}: {chat: ChatModel |
                         {selectedChatMessage.map((message, index) => {
                             return message.isSender  ?
                                 <SentMessageComponent key={index} {...message} /> :
-                                <ReceiveMsgComponent key={index} content={message.content} time={message.time} sender={message.sender} name={message.name} isSender={message.isSender}/>
+                                <ReceiveMsgComponent key={index} content={message.content} time={message.time} sender={message.sender} name={message.name} isSender={message.isSender} attachments={message.attachments}/>
                         })}
                     </div>
                 ) : (
