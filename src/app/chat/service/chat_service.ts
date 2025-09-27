@@ -103,6 +103,7 @@ class ChatService {
 
   // Call service 
   public callFriend(data:CallModel) {
+    const callModel = new CallModel(data.callerId, data.calleeId);
     console.log('[ChatService] callFriend called with data:', data);
     console.log('[ChatService] Socket connected:', this.socket?.connected);
     console.log('[ChatService] Converting to JSON:', data.convertToJson());
@@ -112,22 +113,16 @@ class ChatService {
       return;
     }
     
-    this.socket.emit("callFriend", data.convertToJson());
-    console.log('[ChatService] callFriend event emitted');
+    this.socket.emit("call", data.convertToJson());
+    console.log('[ChatService] call event emitted');
   }
 
   public onRecieveCall(callback: (message:any)=>void){
-    console.log()
-    this.socket?.on("callFriend",callback);
+    console.log('[ChatService] onRecieveCall called');
+    this.socket?.on("call",callback);
   }
 
-  public answerCall(data:AnswerModel){
-    this.socket?.emit("answerFriend",data.convertToJson());
-  }
-
-  public onAnswerCall(callback:(message:AnswerModel)=>void){
-    this.socket?.on("answerFriend",callback);
-  }
+ 
 
   public isConnected(): boolean {
     return this.socket?.connected || false;

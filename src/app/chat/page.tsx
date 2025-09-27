@@ -9,10 +9,12 @@ import SelectedChat from "./components/selectedChat";
 import { ChatPreview } from "./components/chat_preview";
 import ChatFooter from "./components/chat_footer";
 import useReceiveMessage from "./hooks/useReceiveMessage";
+import useIncomingCall from "./hooks/useIncomingCall";
 import { chatService } from "./service/chat_service";
 import { ChatModel } from "./model/chat_model";
 import { CallDialog } from "./components/call_dialog";
 import { useRouter } from "next/navigation";
+import { CallModel } from "./model/call_model";
 
 export default function Chat(){
 
@@ -43,6 +45,7 @@ export default function Chat(){
     useReceiveMessage(setMessageHistory,userId,chats);
     
     // Call functionality
+    const { dialogOpen, setDialogOpen, callerName, setCallerName,roomId } = useIncomingCall(userId, chats);
 
 
 
@@ -51,33 +54,25 @@ export default function Chat(){
     }
 
     async function callFriend(callUserId: string) {
-        try {
-            // Navigate to call page first
-            router.push(`/call/${callUserId}`);
-            // The offer will be created in the call page
+            try {
+                const roomId = crypto.randomUUID();
+                const callModel = new CallModel(userId!, callUserId, roomId);
+                chatService.callFriend(callModel);
+                // Navigate to call page first
+                router.push(`/call/${roomId}`);
         } catch (error) {
             console.error('Error initiating call:', error);
         }
     }
 
     function handleAcceptCall() {
-        // const call = acceptCall();
-        // if (call) {
-        //     // Navigate to call page with the caller's ID
-        //     router.push(`/call/${call.callerId}`);
-        // }
+      
+         router.push(`/call/${roomId}`);
     }
 
     function handleDeclineCall() {
         // declineCall();
     }
-
-    // Test function for manual dialog trigger (remove in production)
-    function testIncomingCall() {
-        // setDialogOpen(true);
-        console.log('[Chat] Manual dialog trigger - dialogOpen should be true');
-    }
-
 
 return (
     <SidebarProvider>
@@ -89,22 +84,12 @@ return (
             onPhoneClick={callFriend}
         />
         <CallDialog 
-            dialogOpen={false} 
-            setDialogOpen={()=>{} }
+            dialogOpen={dialogOpen} 
+            setDialogOpen={setDialogOpen}
             handleAcceptCall={handleAcceptCall}
             handleDeclineCall={handleDeclineCall}
-            callerName={undefined}
+            callerName={callerName}
         />
-        
-        {/* Temporary test button - remove in production */}
-        <div className="fixed top-4 right-4 z-50">
-            <button 
-                onClick={testIncomingCall}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-                Test Dialog
-            </button>
-        </div>
         
         <div className="flex flex-col w-full">
             {selectedChat == null ? (
