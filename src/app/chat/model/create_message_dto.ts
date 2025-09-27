@@ -7,10 +7,10 @@ export class CreateMessageDto {
     content: string;
     attachments?: FileViewResponse[];
 
-    constructor(chatId:string,senderId:string,recieverId:string,content:string,attachments?:any[]){
+    constructor(chatId:string,senderId:string,receiverId:string,content:string,attachments?:any[]){
         this.chatId = chatId;
         this.senderId = senderId;
-        this.receiverId = recieverId;
+        this.receiverId = receiverId;
         this.content = content;
         this.attachments = attachments
     }

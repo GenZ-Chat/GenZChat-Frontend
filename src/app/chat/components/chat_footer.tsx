@@ -9,11 +9,14 @@ import { useFileUploadWithFiles } from "../hooks/useEnhancedFileUpload";
 import { FileAttachment, AttachmentButton } from "./file_attachment";
 import { FileViewResponse } from "../model/file/file_response";
 import { FileUploadResponse } from "../service/file_service";
+import { MessageComponentsProps } from "../model/message_model";
+import { UserModel } from "../model/user_model";
 
 
-export default function ChatFooter({ selectedChat,userId }: {
+export default function ChatFooter({ selectedChat, userId, setMessageHistory }: {
     selectedChat: ChatModel;
-    userId:string | undefined
+    userId: string | undefined;
+    setMessageHistory: React.Dispatch<React.SetStateAction<Record<string, any[]>>>;
 }) {
     const [input_text, setInputText] = useState<string>("");
     const [isUploading, setIsUploading] = useState<boolean>(false);
@@ -33,11 +36,7 @@ export default function ChatFooter({ selectedChat,userId }: {
         hasFiles
     } = useFileUploadWithFiles();
 
-    useEffect(()=>{
-        if(!chatService.isConnected() && userId){
-            chatService.connect(userId)
-        }
-    },[userId])
+    // Connection is managed at the page level, no need to connect here
 
     // Convert FileUploadResponse to FileViewResponse
     function convertToFileViewResponse(uploadResponse: FileUploadResponse, originalFilename: string): FileViewResponse {
@@ -84,10 +83,31 @@ export default function ChatFooter({ selectedChat,userId }: {
                 console.log(`[CHAT FOOTER] Final attachments array:`, attachments);
             }
             
+            // Create the message object to display immediately
+            const sentMessage: MessageComponentsProps = {
+                content: input_text,
+                name: Array.isArray(selectedChat?.users) ? 
+                    selectedChat.users.find((u: UserModel) => u.id === userId)?.name || "You" : 
+                    "You",
+                sender: userId!,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                isSender: true,
+                attachments: attachments || []
+            };
+
+            // Immediately add sent message to local state for better UX
+            setMessageHistory((prevHistory) => {
+                const updatedChatHistory = prevHistory[selectedChat.id] ? 
+                    [...prevHistory[selectedChat.id], sentMessage] : 
+                    [sentMessage];
+                console.log('[CHAT FOOTER] Added sent message to local state:', sentMessage);
+                return { ...prevHistory, [selectedChat.id]: updatedChatHistory };
+            });
+
             // Send the message with file attachments via Socket.IO
             if(selectedChat.type == ChatType.DIRECT && !Array.isArray(selectedChat.users)){
-                const recieverId = selectedChat.users.id;
-                const message = new CreateMessageDto(selectedChat.id, userId!, recieverId, input_text, attachments);
+                const receiverId = selectedChat.users.id;
+                const message = new CreateMessageDto(selectedChat.id, userId!, receiverId, input_text, attachments);
                 console.log('[CHAT FOOTER] Sending direct message:', {
                     chatId: selectedChat.id,
                     attachmentCount: attachments.length,

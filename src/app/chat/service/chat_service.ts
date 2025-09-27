@@ -72,8 +72,8 @@ class ChatService {
       senderId: messageData.senderId,
       receiverId: messageData.receiverId,
       hasContent: !!messageData.content,
-      attachmentCount: messageData.attatchments?.length || 0,
-      attachments: messageData.attatchments
+      attachmentCount: messageData.attachments?.length || 0,
+      attachments: messageData.attachments
     });
     this.socket?.emit("sendDirectMessage", messageData);
   }
@@ -138,7 +138,7 @@ class ChatService {
   }
 
   public offGroupMessage(callback: (message: string) => void) {
-    this.socket?.off("recieveGroupMessage", callback);
+    this.socket?.off("receiveGroupMessage", callback);
   }
 
 

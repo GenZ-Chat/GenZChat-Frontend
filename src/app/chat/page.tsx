@@ -25,7 +25,7 @@ export default function Chat(){
     
     //fetching user details
     useEffect(() => {
-        if(!userId) return;
+        if(!userId || chatService.isConnected()) return;
         chatService.connect(userId);
     }, [userId]);
 
@@ -112,7 +112,7 @@ return (
             ) : (
                 <>
                     <SelectedChat messages={messageHistory} chat={selectedChat} userId={userId} />
-                    <ChatFooter selectedChat={selectedChat} userId={userId} />
+                    <ChatFooter selectedChat={selectedChat} userId={userId} setMessageHistory={setMessageHistory} />
                 </>
             )}
         </div>
