@@ -3,6 +3,7 @@ import Google from "next-auth/providers/google"
 import { api } from "./app/config/api_config";
 import Auth0 from "next-auth/providers/auth0"
 
+
 // Extend the built-in session types
 declare module "next-auth" {
   interface Session {
@@ -102,6 +103,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (token.id) {
         session.user.id = token.id as string
       }
+      console.log("session:", session);
+      
+      
+
       return session
     },
 
