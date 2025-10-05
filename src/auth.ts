@@ -2,6 +2,7 @@ import NextAuth from "next-auth"
 import Google from "next-auth/providers/google"
 import { api } from "./app/config/api_config";
 import Auth0 from "next-auth/providers/auth0"
+import { getKeyExchangeForUser, uint8ArrayToBase64 } from "./app/encryption/key_exchange";
 
 
 // Extend the built-in session types
@@ -49,12 +50,33 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           console.log(account?.access_token)
           const { id, type } = formatUserId(profile?.sub!);
           console.log("Formatted ID:", id, "Type:", type);
+          
+          // Generate keys for the user using their formatted ID
+          const userKeyExchange = getKeyExchangeForUser(id);
+          const { publicKey, signPublicKey, signedKey } = await userKeyExchange.getPublicKey();
+          
+          // Convert keys to Base64 for efficient storage
+          const publicKeyString = uint8ArrayToBase64(publicKey);
+          const signedPublicKeyString = uint8ArrayToBase64(signPublicKey);
+          const signedKeyString = uint8ArrayToBase64(signedKey);
+          
           // Check if user already exists
           let existingUser;
           try {
             existingUser = await api.get(`/users/auth0/${id}`);
             console.log("existingUser:", existingUser.data);
             if (existingUser.data) {
+              // Update existing user with new keys
+              try {
+                await api.patch(`/users/${existingUser.data._id}`, {
+                  publicKey: publicKeyString,
+                  signedPublicKey: signedPublicKeyString,
+                  signedKey: signedKeyString
+                });
+                console.log("Updated existing user with new keys");
+              } catch (updateErr) {
+                console.error("Error updating user keys:", updateErr);
+              }
               account!.userId = existingUser.data._id;
               return true;
             }
@@ -65,7 +87,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 email: user.email,
                 name: user.name,
                 auth0Id: id,
-                userType: type
+                userType: type,
+                publicKey: publicKeyString,
+                signedPublicKey: signedPublicKeyString,
+                signedKey: signedKeyString
               });
               account!.userId = createdUser.data._id;
               return true;

@@ -1,6 +1,8 @@
 
 import {auth} from "@/auth";
 import { ChatModel } from "../model/chat_model";
+import { UpdateUserDto } from "../model/user_model";
+import { api } from "@/app/config/api_config";
 
  class UserService {
     private baseUrl: string | undefined;
@@ -26,6 +28,16 @@ import { ChatModel } from "../model/chat_model";
 
         const friends: ChatModel[] = await response.json();
         return friends;
+    }
+
+    public async updateUser(userId: string, updateData: UpdateUserDto): Promise<any> {
+        try {
+            const response = await api.patch(`/users/${userId}`, updateData);
+            return response.data;
+        } catch (error) {
+            console.error('Error updating user:', error);
+            throw error;
+        }
     }
 
     
