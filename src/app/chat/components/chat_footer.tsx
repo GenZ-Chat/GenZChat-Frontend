@@ -11,6 +11,8 @@ import { FileViewResponse } from "../model/file/file_response";
 import { FileUploadResponse } from "../service/file_service";
 import { MessageComponentsProps } from "../model/message_model";
 import { UserModel } from "../model/user_model";
+import { getKeyExchangeForUser, base64ToUint8Array, uint8ArrayToBase64 } from "@/app/encryption/key_exchange";
+import { aesEncryption } from "@/app/encryption/aes";
 
 
 export default function ChatFooter({ selectedChat, userId, setMessageHistory }: {
@@ -53,10 +55,13 @@ export default function ChatFooter({ selectedChat, userId, setMessageHistory }: 
 
     async function handleSendMessage() {
         if (input_text.trim() === "" && !hasFiles) return;
+        let encrypted_text;
         
         console.log(`[CHAT FOOTER] Starting to send message with ${selectedFiles.length} files`);
         setIsUploading(true);
         let attachments: FileViewResponse[] = [];
+        
+
         
         try {
             // Upload files first if there are any
@@ -106,13 +111,29 @@ export default function ChatFooter({ selectedChat, userId, setMessageHistory }: 
 
             // Send the message with file attachments via Socket.IO
             if(selectedChat.type == ChatType.DIRECT && !Array.isArray(selectedChat.users)){
+                if(input_text.trim() !== ""){
+            const publicKey = base64ToUint8Array(selectedChat.users.publicKey!);
+            const userKeyExchange = getKeyExchangeForUser(userId!);
+            const sharedSecret = await userKeyExchange.getSharedSecret(publicKey);
+            const serializable_cipher = await aesEncryption.encryptMessageToBase64(input_text, sharedSecret);
+            encrypted_text = JSON.stringify(serializable_cipher);
+            console.log('[ENCRYPTION DEBUG] Encryption process:', {
+                senderUserId: userId,
+                receiverId: selectedChat.users.id,
+                originalText: input_text,
+                receiverPublicKey: selectedChat.users.publicKey,
+                sharedSecret: uint8ArrayToBase64(sharedSecret),
+                serializable_cipher,
+                encrypted_text
+            });
+            }
                 const receiverId = selectedChat.users.id;
-                const message = new CreateMessageDto(selectedChat.id, userId!, receiverId, input_text, attachments);
+                const message = new CreateMessageDto(selectedChat.id, userId!, receiverId, encrypted_text!, attachments);
                 console.log('[CHAT FOOTER] Sending direct message:', {
                     chatId: selectedChat.id,
                     attachmentCount: attachments.length,
                     attachments,
-                    content: input_text,
+                    content: encrypted_text,
                     messageObj: message
                 });
                 chatService.sendMessage(message);

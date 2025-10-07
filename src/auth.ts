@@ -1,120 +1,128 @@
-import NextAuth from "next-auth"
-import Google from "next-auth/providers/google"
+import NextAuth from "next-auth";
+import Auth0 from "next-auth/providers/auth0";
 import { api } from "./app/config/api_config";
-import Auth0 from "next-auth/providers/auth0"
 import { getKeyExchangeForUser, uint8ArrayToBase64 } from "./app/encryption/key_exchange";
 
-
-// Extend the built-in session types
+// Extend built-in session and JWT types
 declare module "next-auth" {
   interface Session {
-    accessToken?: string
+    accessToken?: string;
   }
   interface JWT {
-    accessToken?: string
-    refreshToken?: string
+    accessToken?: string;
+    refreshToken?: string;
+    id?: string;
   }
 }
 
-function formatUserId(userId:string){
+// Helper to format Auth0/Google user IDs
+function formatUserId(userId: string) {
   const parts = userId.split("|");
   const id = parts[1];
-  const type = parts[0] === "auth0" ? "email" : parts[0] === "google-oauth2" ? "google" : "unknown"; // Assuming the first part is the type
-  return { type, id }
+  const type =
+    parts[0] === "auth0"
+      ? "email"
+      : parts[0] === "google-oauth2"
+      ? "google"
+      : "unknown";
+  return { type, id };
 }
- 
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  providers: [Google, Auth0({
+  providers: [
+    Auth0({
       issuer: process.env.AUTH_AUTH0_ISSUER,
       clientId: process.env.AUTH_AUTH0_ID!,
       clientSecret: process.env.AUTH_AUTH0_SECRET!,
-      authorization:{
-        params:{
-          prompt: "login"
-        }
-      }
-  
-  })],
+      authorization: {
+        params: {
+          prompt: "login",
+          scope: "openid email profile",
+        },
+      },
+      checks: ["state"], // Keep CSRF protection
+      wellKnown: `${
+        (process.env.AUTH_AUTH0_ISSUER ?? "").replace(/\/$/, "")
+      }/.well-known/openid-configuration`,
+    }),
+  ],
   secret: process.env.AUTH_SECRET,
+  trustHost: true,
+  useSecureCookies: false, // Set false for dev/localhost
+
+  // Let NextAuth handle state/csrf/session cookies automatically
+  cookies: {
+    sessionToken: {
+      name: "next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: false,
+      },
+    },
+    // Optional callback URL cookie
+    callbackUrl: {
+      name: "next-auth.callback-url",
+      options: {
+        sameSite: "lax",
+        path: "/",
+        secure: false,
+      },
+    },
+  },
 
   session: {
     strategy: "jwt",
-
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-  callbacks: {
 
+  debug: process.env.NODE_ENV === "development",
+
+  callbacks: {
     async signIn({ user, account, profile }) {
       if (user) {
         try {
-          console.log(account?.id_token)
-          console.log(account?.access_token)
           const { id, type } = formatUserId(profile?.sub!);
           console.log("Formatted ID:", id, "Type:", type);
-          
-          // Generate keys for the user using their formatted ID
-          const userKeyExchange = getKeyExchangeForUser(id);
-          const { publicKey, signPublicKey, signedKey } = await userKeyExchange.getPublicKey();
-          
-          // Convert keys to Base64 for efficient storage
-          const publicKeyString = uint8ArrayToBase64(publicKey);
-          const signedPublicKeyString = uint8ArrayToBase64(signPublicKey);
-          const signedKeyString = uint8ArrayToBase64(signedKey);
-          
+
           // Check if user already exists
           let existingUser;
           try {
             existingUser = await api.get(`/users/auth0/${id}`);
             console.log("existingUser:", existingUser.data);
             if (existingUser.data) {
-              // Update existing user with new keys
-              try {
-                await api.patch(`/users/${existingUser.data._id}`, {
-                  publicKey: publicKeyString,
-                  signedPublicKey: signedPublicKeyString,
-                  signedKey: signedKeyString
-                });
-                console.log("Updated existing user with new keys");
-              } catch (updateErr) {
-                console.error("Error updating user keys:", updateErr);
-              }
               account!.userId = existingUser.data._id;
               return true;
             }
           } catch (err: any) {
             if (err.response && err.response.status === 404) {
-              // User not found, proceed to create
+              // User not found, create new
               const createdUser = await api.post("/users", {
                 email: user.email,
                 name: user.name,
                 auth0Id: id,
                 userType: type,
-                publicKey: publicKeyString,
-                signedPublicKey: signedPublicKeyString,
-                signedKey: signedKeyString
               });
               account!.userId = createdUser.data._id;
               return true;
             } else {
-              // Other errors
               console.error("Error checking user existence:", err);
               return true;
             }
           }
         } catch (error) {
           console.error("Error creating user:", error);
-          // Return true to allow sign in even if user creation fails
           return true;
         }
       }
       return false;
     },
-    async jwt({ token, user, account, profile }) {
-      //customizing jwt tokens and syncing with auth0 tokens
-      console.log("account_user_id:", account?.userId);
+
+    async jwt({ token, account }) {
       if (account) {
         token.accessToken = account.access_token;
       }
-      // Only use MongoDB ObjectId for token.id
       if (account?.userId) {
         token.id = account.userId;
         token.sub = account.userId;
@@ -123,21 +131,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
 
     async session({ session, token }) {
-      //customizing session object
-      session.accessToken = token.accessToken as string
+      session.accessToken = token.accessToken as string;
       if (token.id) {
-        session.user.id = token.id as string
+        session.user.id = token.id as string;
       }
-      console.log("session:", session);
-      
-      
-
-      return session
+      return session;
     },
 
     async redirect({ url, baseUrl }) {
-      return "/home"; // redirect after login
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+      if (new URL(url).origin === baseUrl) return url;
+      return "/loading";
     },
-  }
-})
-
+  },
+});

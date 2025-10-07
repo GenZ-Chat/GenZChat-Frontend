@@ -70,7 +70,7 @@ export default async function SignIn() {
             action={async () => {
               "use server"
               await signIn("auth0", {
-                callbackUrl: "/home",
+                callbackUrl: "/loading",
               })
             }}
           >

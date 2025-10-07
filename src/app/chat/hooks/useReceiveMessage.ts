@@ -4,6 +4,8 @@ import { ReceivedMessageModel } from "../model/receive_message_model";
 import { ChatModel } from "../model/chat_model";
 import { MessageComponentsProps } from "../model/message_model";
 import { UserModel } from "../model/user_model";
+import { base64ToUint8Array, getKeyExchangeForUser, uint8ArrayToBase64 } from "@/app/encryption/key_exchange";
+import { aesEncryption } from "@/app/encryption/aes";
 
 export default function useReceiveMessage(setMessageHistory: React.Dispatch<React.SetStateAction<Record<string, any[]>>>, userId: string | undefined,chats:ChatModel[]) {
 
@@ -23,12 +25,63 @@ export default function useReceiveMessage(setMessageHistory: React.Dispatch<Reac
         }
 
         // Function to handle incoming messages
-        const handleMessage = (data: any) => {
+        const handleMessage = async(data: any) => {
             console.log('[RECEIVE MESSAGE] Received direct message:', data);
             const chat = chatsRef.current.find(chat => chat.id === data.chat);
             const receivedMessage:ReceivedMessageModel = ReceivedMessageModel.fromJson(data);
+            
+            let decryptContent: string;
+            
+            try {
+                // Parse the encrypted content (which should be base64-encoded)
+                const encryptedData = JSON.parse(receivedMessage.content);
+                console.log('[RECEIVE MESSAGE] Encrypted data:', encryptedData);
+                
+                // Get the sender's public key for decryption
+                const publicKey = Array.isArray(chat?.users) ? null : chat?.users.id === userId ? null : chat?.users.publicKey;
+                
+                console.log('[DECRYPTION DEBUG] Chat users info:', {
+                    chatId: chat?.id,
+                    chatUsers: chat?.users,
+                    isArray: Array.isArray(chat?.users),
+                    userId: userId,
+                    senderPublicKey: publicKey
+                });
+                
+                if (!publicKey) {
+                    console.error('[RECEIVE MESSAGE] No public key found for decryption');
+                    decryptContent = "[Decryption Error: No public key]";
+                } else {
+                    const userKeyExchange = getKeyExchangeForUser(userId!);
+                    const sharedSecret = await userKeyExchange.getSharedSecret(base64ToUint8Array(publicKey));
+                    
+                    console.log('[DECRYPTION DEBUG] Decryption process:', {
+                        receiverUserId: userId,
+                        senderId: receivedMessage.sender,
+                        senderPublicKey: publicKey,
+                        sharedSecret: uint8ArrayToBase64(sharedSecret),
+                        encryptedData: encryptedData
+                    });
+                    
+                    // Use the new decryptFromBase64 method that handles base64-encoded data
+                    decryptContent = await aesEncryption.decryptFromBase64(
+                        sharedSecret, 
+                        encryptedData.ciphertext, 
+                        encryptedData.iv
+                    );
+                    console.log('[RECEIVE MESSAGE] Decrypted content:', decryptContent);
+                }
+            } catch (decryptError) {
+                console.error('[RECEIVE MESSAGE] Decryption failed:', decryptError);
+                console.error('[RECEIVE MESSAGE] Full error details:', {
+                    error: decryptError,
+                    receivedContent: receivedMessage.content,
+                    chat: chat
+                });
+                decryptContent = "[Decryption Error]";
+            }
                const newMessage: MessageComponentsProps = {
-                            content: receivedMessage.content,
+                            content: decryptContent,
                             name:  Array.isArray(chat?.users) ? chat.users.find((u:UserModel)=> u.id === receivedMessage.sender)?.name || "Unknown User" : chat?.users.name || "Unknown User",
                             sender: receivedMessage.sender,
                             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),

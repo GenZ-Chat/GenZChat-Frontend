@@ -8,6 +8,8 @@
         const messages = await fetch(this.baseUrl+`?userId=${this.userId}`);
         const data = await messages.json();
         console.log('[MESSAGE SERVICE] Raw messages data:', data);
+        console.log('[MESSAGE SERVICE] Sample message structure:', 
+            Object.keys(data).length > 0 ? data[Object.keys(data)[0]]?.[0] : 'No messages found');
         return data;
     }
 

@@ -86,6 +86,7 @@ class KeyExchange {
    */
   async getPublicKey() {
     const privKey = await this.getEncryptionPrivateKey();
+    console.log("Encryption Private Key (Base64):", uint8ArrayToBase64(privKey));
     const pubKey = x25519.getPublicKey(privKey);
 
     const { signKey, signPub } = await this.getSigningKey();
